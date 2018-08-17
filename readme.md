@@ -4,7 +4,7 @@
 ## Installation
 
 ```
-go get -u github.com/dazheng/KunhnMunkress
+go get -u github.com/dazheng/kuhnmunkres
 ```
 
 ## 参考资料
