@@ -1,4 +1,4 @@
-package pub
+package kuhnMunkres
 
 import (
 	"math"
@@ -61,14 +61,14 @@ func (self *Munkres) initBidArray() {
 //it from every element in its row.  When finished, Go to Step 2.
 func (self *Munkres) step1() {
 	var min int
-	for r := 0; r < self.nrow; r++ {
+	for r, row := range self.maxtrix {
 		min = self.maxtrix[r][0]
-		for c := 0; c < self.ncol; c++ {
-			if self.maxtrix[r][c] < min {
-				min = self.maxtrix[r][c]
+		for _, col := range row {
+			if col < min {
+				min = col
 			}
 		}
-		for c := 0; c < self.ncol; c++ {
+		for c, _ := range row {
 			self.maxtrix[r][c] -= min
 		}
 	}
@@ -79,21 +79,15 @@ func (self *Munkres) step1() {
 //zero in its row or column, star Z. Repeat for each element in the
 //matrix. Go to Step 3.
 func (self *Munkres) step2() {
-	for r := 0; r < self.nrow; r++ {
-		for c := 0; c < self.ncol; c++ {
-			if self.maxtrix[r][c] == 0 && self.rowCover[r] == 0 && self.colCover[c] == 0 {
+	rf := false
+	for r, row := range self.maxtrix {
+		rf = self.rowCover[r] == 0
+		for c, col := range row {
+			if col == 0 && rf && self.colCover[c] == 0 {
 				self.started[r][c] = 1
-				//self.rowCover[r] = 1
-				//self.colCover[c] = 1
 			}
 		}
 	}
-	//for r := 0; r < self.nrow; r++ {
-	//	self.rowCover[r] = 0
-	//}
-	//for c := 0; c < self.ncol; c++ {
-	//	self.colCover[c] = 0
-	//}
 	self.step = 3
 }
 
@@ -101,9 +95,9 @@ func (self *Munkres) step2() {
 //the starred zeros describe a complete set of unique assignments.  In this
 //case, Go to DONE, otherwise, Go to Step 4.
 func (self *Munkres) step3() {
-	for r := 0; r < self.nrow; r++ {
-		for c := 0; c < self.ncol; c++ {
-			if self.started[r][c] == 1 {
+	for _, row := range self.started {
+		for c, col := range row {
+			if col == 1 {
 				self.colCover[c] = 1
 			}
 		}
@@ -125,50 +119,24 @@ func (self *Munkres) step3() {
 
 // FindAZero setp4用到的方法
 func (self *Munkres) findAZero() (int, int) {
-	r, c := 0, 0
-	row, col := -1, -1
-
-	for {
-		c = 0
-
-		for {
-			if self.maxtrix[r][c] == 0 && self.rowCover[r] == 0 && self.colCover[c] == 0 {
-				row = r
-				col = c
-				return row, col
-			}
-			c++
-			if c >= self.ncol {
-				break
+	for r, row := range self.maxtrix {
+		for c, col := range row {
+			if col == 0 && self.rowCover[r] == 0 && self.colCover[c] == 0 {
+				return r, c
 			}
 		}
-		r++
-		if r >= self.nrow {
-			return row, col
-		}
 	}
-}
-
-func (self *Munkres) starInRow(row int) bool {
-	flag := false
-	for c := 0; c < self.ncol; c++ {
-		if self.started[row][c] == 1 {
-			flag = true
-			break
-		}
-	}
-	return flag
+	return -1, -1
 }
 
 func (self *Munkres) findStarInRow(row int) int {
-	col := -1
-	for c := 0; c < self.ncol; c++ {
-		if self.started[row][c] == 1 {
-			col = c
-			break
+	rw := self.started[row]
+	for c, col := range rw {
+		if col == 1 {
+			return c
 		}
 	}
-	return col
+	return -1
 }
 
 //Find a noncovered zero and prime it.  If there is no starred zero
@@ -190,10 +158,9 @@ func (self *Munkres) step4() {
 			self.step = 6
 		} else {
 			self.started[row][col] = 2
-			if self.starInRow(row) {
-				col = self.findStarInRow(row)
+			if c := self.findStarInRow(row); c > -1 {
 				self.rowCover[row] = 1
-				self.colCover[col] = 0 // 不解
+				self.colCover[c] = 0
 			} else {
 				done = true
 				self.step = 5
@@ -206,25 +173,21 @@ func (self *Munkres) step4() {
 
 // setp5 支持函数
 func (self *Munkres) findStarInCol(c int) int {
-	r := -1
-	for i := 0; i < self.nrow; i++ {
-		if self.started[i][c] == 1 {
-			r = i
-			break
+	for r := 0; r < self.nrow; r++ {
+		if self.started[r][c] == 1 {
+			return r
 		}
 	}
-	return r
+	return -1
 }
 
 func (self *Munkres) findPrimeInRow(r int) int {
-	c := -1
 	for j := 0; j < self.ncol; j++ {
 		if self.started[r][j] == 2 {
-			c = j
-			break
+			return j
 		}
 	}
-	return c
+	return -1
 }
 
 func (self *Munkres) augmentPath() {
@@ -247,9 +210,9 @@ func (self *Munkres) clearCovers() {
 }
 
 func (self *Munkres) earasePrimes() {
-	for r := 0; r < self.nrow; r++ {
-		for c := 0; c < self.ncol; c++ {
-			if self.started[r][c] == 2 {
+	for r, row := range self.started {
+		for c, col := range row {
+			if col == 2 {
 				self.started[r][c] = 0
 			}
 		}
@@ -295,11 +258,13 @@ func (self *Munkres) step5() {
 }
 
 func (self *Munkres) findSmallest(minval int) int {
-	for r := 0; r < self.nrow; r++ {
-		for c := 0; c < self.ncol; c++ {
-			if self.rowCover[r] == 0 && self.colCover[c] == 0 {
-				if minval > self.maxtrix[r][c] {
-					minval = self.maxtrix[r][c]
+	rf := false
+	for r, row := range self.maxtrix {
+		rf = self.rowCover[r] == 0
+		for c, col := range row {
+			if rf && self.colCover[c] == 0 {
+				if minval > col {
+					minval = col
 				}
 			}
 		}
@@ -311,14 +276,15 @@ func (self *Munkres) findSmallest(minval int) int {
 //it from every element of each uncovered column.  Return to Step 4 without
 //altering any stars, primes, or covered lines.
 func (self *Munkres) step6() {
+	rc := -1
 	minval := math.MaxInt64
 	minval = self.findSmallest(minval)
-	for r := 0; r < self.nrow; r++ {
-		for c := 0; c < self.ncol; c++ {
-			if self.rowCover[r] == 1 {
+	for r, row := range self.maxtrix {
+		rc = self.rowCover[r]
+		for c, _ := range row {
+			if rc == 1 {
 				self.maxtrix[r][c] += minval
 			}
-
 			if self.colCover[c] == 0 {
 				self.maxtrix[r][c] -= minval
 			}
@@ -337,7 +303,7 @@ func (self *Munkres) RunMunkres() [][]int {
 		if done {
 			break
 		}
-		//fmt.Println(self.step)
+		//		fmt.Println(self.step)
 		switch self.step {
 		case 1:
 			self.step1()
