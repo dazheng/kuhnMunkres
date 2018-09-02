@@ -79,14 +79,20 @@ func (self *Munkres) step1() {
 //zero in its row or column, star Z. Repeat for each element in the
 //matrix. Go to Step 3.
 func (self *Munkres) step2() {
-	rf := false
 	for r, row := range self.maxtrix {
-		rf = self.rowCover[r] == 0
 		for c, col := range row {
-			if col == 0 && rf && self.colCover[c] == 0 {
+			if col == 0 && self.rowCover[r] == 0 && self.colCover[c] == 0 {
 				self.started[r][c] = 1
+				self.rowCover[r] = 1
+				self.colCover[c] = 1
 			}
 		}
+	}
+	for r := 0; r < self.nrow; r++ {
+		self.rowCover[r] = 0
+	}
+	for c := 0; c < self.ncol; c++ {
+		self.colCover[c] = 0
 	}
 	self.step = 3
 }
@@ -119,6 +125,7 @@ func (self *Munkres) step3() {
 
 // FindAZero setp4用到的方法
 func (self *Munkres) findAZero() (int, int) {
+	rw, cl := -1, -1
 	for r, row := range self.maxtrix {
 		for c, col := range row {
 			if col == 0 && self.rowCover[r] == 0 && self.colCover[c] == 0 {
@@ -126,17 +133,18 @@ func (self *Munkres) findAZero() (int, int) {
 			}
 		}
 	}
-	return -1, -1
+	return rw, cl
 }
 
 func (self *Munkres) findStarInRow(row int) int {
+	cl := -1
 	rw := self.started[row]
 	for c, col := range rw {
 		if col == 1 {
-			return c
+			cl = c
 		}
 	}
-	return -1
+	return cl
 }
 
 //Find a noncovered zero and prime it.  If there is no starred zero
@@ -173,21 +181,23 @@ func (self *Munkres) step4() {
 
 // setp5 支持函数
 func (self *Munkres) findStarInCol(c int) int {
+	row := -1
 	for r := 0; r < self.nrow; r++ {
 		if self.started[r][c] == 1 {
-			return r
+			row = r
 		}
 	}
-	return -1
+	return row
 }
 
 func (self *Munkres) findPrimeInRow(r int) int {
+	col := -1
 	for j := 0; j < self.ncol; j++ {
 		if self.started[r][j] == 2 {
-			return j
+			col = j
 		}
 	}
-	return -1
+	return col
 }
 
 func (self *Munkres) augmentPath() {
@@ -303,7 +313,8 @@ func (self *Munkres) RunMunkres() [][]int {
 		if done {
 			break
 		}
-		//		fmt.Println(self.step)
+		//fmt.Println(self.step)
+		//fmt.Println(self.started)
 		switch self.step {
 		case 1:
 			self.step1()
